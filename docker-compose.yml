@@ -1,0 +1,59 @@
+version: '3.8'
+
+networks:
+  niuzi-network:
+    driver: bridge
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "6688:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001/api
+    volumes:
+      - /volume2/docker/niuzi-assistant/data/frontend/logs:/data/logs
+      - /volume2/docker/niuzi-assistant/data/uploads:/data/uploads
+    networks:
+      - niuzi-network
+    container_name: niuzi-frontend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - database
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://niuzi:niuzi123@database:5432/niuzi_db
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - /volume2/docker/niuzi-assistant/data/backend:/data/backend
+      - /volume2/docker/niuzi-assistant/data/backups:/data/backups
+    networks:
+      - niuzi-network
+    container_name: niuzi-backend
+
+  database:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=niuzi
+      - POSTGRES_PASSWORD=niuzi123
+      - POSTGRES_DB=niuzi_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /volume2/docker/niuzi-assistant/data/postgresql:/data/postgresql
+    networks:
+      - niuzi-network
+    container_name: niuzi-database
+
+volumes:
+  postgres_data:
